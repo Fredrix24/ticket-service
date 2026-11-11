@@ -2,7 +2,7 @@ spring:
   application:
     name: ticket-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/tickets
+    url: jdbc:postgresql://localhost:5433/tickets
     username: postgres
     password: postgres
   jpa:
@@ -12,6 +12,7 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+    baseline-on-migrate: true
 
 server:
   port: 8080
@@ -21,3 +22,7 @@ management:
     web:
       exposure:
         include: health,info
+
+logging:
+  level:
+    org.flywaydb: DEBUG
