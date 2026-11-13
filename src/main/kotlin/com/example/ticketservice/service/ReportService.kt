@@ -13,7 +13,7 @@ class ReportService(
 ) {
     fun getSummary(from: OffsetDateTime, to: OffsetDateTime): ReportSummary {
         if (from >= to) {
-            throw IllegalArgumentException("Invalid period: 'from' must be before 'to'")
+            throw com.example.ticketservice.exception.BadRequestException("Invalid period: 'from' must be before 'to'")
         }
 
         val tickets: List<TicketReportRow> = dataPort.findTicketsCreatedBetween(from, to)
