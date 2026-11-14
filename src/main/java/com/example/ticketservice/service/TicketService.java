@@ -4,6 +4,7 @@ import org.springframework.data.jpa.domain.Specification;
 import com.example.ticketservice.dto.StatusUpdateRequest;
 import com.example.ticketservice.dto.TicketCreateRequest;
 import com.example.ticketservice.dto.TicketResponse;
+import com.example.ticketservice.dto.TicketUpdateRequest;
 import com.example.ticketservice.entity.Category;
 import com.example.ticketservice.entity.StatusHistory;
 import com.example.ticketservice.dto.StatusHistoryResponse;
@@ -56,6 +57,21 @@ public class TicketService {
     @Transactional(readOnly = true)
     public TicketResponse getById(Long id) {
         return mapToResponse(findTicket(id));
+    }
+
+    @Transactional
+    public TicketResponse update(Long id, TicketUpdateRequest request) {
+        Ticket ticket = findTicket(id);
+
+        if ("RESOLVED".equals(ticket.getStatus()) || "CANCELLED".equals(ticket.getStatus())) {
+            throw new ConflictException("Cannot update closed or cancelled ticket");
+        }
+
+        if (request.description() != null) ticket.setDescription(request.description());
+        if (request.priority() != null) ticket.setPriority(request.priority());
+        if (request.dueAt() != null) ticket.setDueAt(request.dueAt());
+
+        return mapToResponse(ticketRepository.save(ticket));
     }
 
     @Transactional

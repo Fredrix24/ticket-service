@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class TicketControllerIntegrationTest {
 
     @Container
-    @ServiceConnection // <-- Spring сам подставит URL, логин и пароль
+    @ServiceConnection
     static PostgreSQLContainer postgres = new PostgreSQLContainer("postgres:16");
 
     @Autowired
@@ -110,5 +110,79 @@ public class TicketControllerIntegrationTest {
                         .param("size", "5"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content").isArray());
+    }
+
+    @Test
+    void e2e_FullLifecycle_CreateInProgressResolveAndReport() throws Exception {
+        TicketCreateRequest request = new TicketCreateRequest("E2E Lifecycle", "Desc", 1L, "HIGH", null);
+        String createResponse = mockMvc.perform(post("/api/tickets")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        Long id = objectMapper.readTree(createResponse).get("id").asLong();
+
+        mockMvc.perform(patch("/api/tickets/" + id + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"IN_PROGRESS\"}"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(patch("/api/tickets/" + id + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"RESOLVED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.closedAt").isNotEmpty());
+
+        mockMvc.perform(get("/api/reports/summary")
+                        .param("from", OffsetDateTime.now().minusDays(1).toString())
+                        .param("to", OffsetDateTime.now().plusDays(1).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.byStatus.RESOLVED").value(1));
+    }
+
+    @Test
+    void e2e_ForbiddenOperation_DataNotChanged() throws Exception {
+        TicketCreateRequest request = new TicketCreateRequest("E2E Forbidden", "Desc", 1L, "HIGH", null);
+        String createResponse = mockMvc.perform(post("/api/tickets")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andReturn().getResponse().getContentAsString();
+        Long id = objectMapper.readTree(createResponse).get("id").asLong();
+
+        mockMvc.perform(patch("/api/tickets/" + id + "/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\": \"RESOLVED\"}"))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(get("/api/tickets/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("NEW"));
+
+        mockMvc.perform(get("/api/tickets/" + id + "/history"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1));
+    }
+
+    @Test
+    void regression_UpdateClosedTicket_Returns409() throws Exception {
+        TicketCreateRequest request = new TicketCreateRequest("Regression", "Desc", 1L, "HIGH", null);
+        String response = mockMvc.perform(post("/api/tickets")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andReturn().getResponse().getContentAsString();
+        Long id = objectMapper.readTree(response).get("id").asLong();
+
+        mockMvc.perform(patch("/api/tickets/" + id + "/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\": \"IN_PROGRESS\"}"));
+
+        mockMvc.perform(patch("/api/tickets/" + id + "/status")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"status\": \"RESOLVED\"}"));
+
+        mockMvc.perform(patch("/api/tickets/" + id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"description\": \"Hacked!\"}"))
+                .andExpect(status().isConflict());
     }
 }
