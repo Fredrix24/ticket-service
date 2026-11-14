@@ -6,6 +6,7 @@ import com.example.ticketservice.dto.StatusHistoryResponse;
 import java.util.List;
 import com.example.ticketservice.dto.TicketCreateRequest;
 import com.example.ticketservice.dto.TicketResponse;
+import com.example.ticketservice.dto.TicketUpdateRequest;
 import com.example.ticketservice.service.TicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,11 @@ public class TicketController {
     @GetMapping("/{id}")
     public TicketResponse getById(@PathVariable Long id) {
         return ticketService.getById(id);
+    }
+
+    @PatchMapping("/{id}")
+    public TicketResponse update(@PathVariable Long id, @RequestBody TicketUpdateRequest request) {
+        return ticketService.update(id, request);
     }
 
     @PatchMapping("/{id}/status")
