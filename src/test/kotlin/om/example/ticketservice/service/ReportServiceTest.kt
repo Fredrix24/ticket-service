@@ -56,7 +56,7 @@ class ReportServiceTest {
         val from = OffsetDateTime.now()
         val to = from.minusDays(1)
 
-        val exception = assertThrows(IllegalArgumentException::class.java) {
+        val exception = assertThrows(com.example.ticketservice.exception.BadRequestException::class.java) {
             service.getSummary(from, to)
         }
         assertTrue(exception.message?.contains("Invalid period") == true)
