@@ -1,14 +1,5 @@
-name: CI/CD Pipeline
-
-on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-test:
@@ -24,6 +15,10 @@ jobs:
 
       - name: Build and Test
         run: ./gradlew test
+
+      - name: Set lowercase image name
+        if: github.ref == 'refs/heads/main'
+        run: echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Log in to the Container registry
         if: github.ref == 'refs/heads/main'
@@ -44,9 +39,7 @@ jobs:
       - name: Deploy to Stand (WSL)
         if: github.ref == 'refs/heads/main'
         run: |
-          # Останавливаем старые контейнеры
           docker compose down || true
-          # Скачиваем новый образ и запускаем
           docker compose pull
           docker compose up -d
 
