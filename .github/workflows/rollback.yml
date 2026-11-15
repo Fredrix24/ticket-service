@@ -3,13 +3,17 @@ on:
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Image tag to deploy (e.g., commit sha)'
+        description: 'Image tag to deploy (e.g., commit sha or latest)'
         required: true
+        default: 'latest'
 
 jobs:
   rollback:
     runs-on: self-hosted
     steps:
+      - name: Set lowercase image name
+        run: echo "IMAGE_NAME=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Log in to the Container registry
         uses: docker/login-action@v3
         with:
@@ -19,6 +23,6 @@ jobs:
 
       - name: Deploy specific image
         run: |
-          docker pull ghcr.io/${{ github.repository }}:${{ github.event.inputs.image_tag }}
+          docker pull ghcr.io/${{ env.IMAGE_NAME }}:${{ github.event.inputs.image_tag }}
           docker compose down || true
           docker compose up -d
