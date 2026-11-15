@@ -1,0 +1,24 @@
+name: Rollback
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Image tag to deploy (e.g., commit sha)'
+        required: true
+
+jobs:
+  rollback:
+    runs-on: self-hosted
+    steps:
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Deploy specific image
+        run: |
+          docker pull ghcr.io/${{ github.repository }}:${{ github.event.inputs.image_tag }}
+          docker compose down || true
+          docker compose up -d
